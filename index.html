@@ -288,6 +288,8 @@
             
             Object.entries(coef).forEach(([stat, { base, weight }]) => {
                 if (stat === 'critDamage' && state.partType === 'part') return;
+                // 스탯이 0일 경우 해당 스탯의 기본 계수와 가중치를 모두 0으로 처리
+                if (values[stat] === 0) return;
                 score += base + (weight * (values[stat] / 10));
             });
             
