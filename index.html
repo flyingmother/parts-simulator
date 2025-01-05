@@ -7,56 +7,60 @@
     <style>
         body {
             font-family: system-ui, -apple-system, sans-serif;
-            max-width: 672px;
-            margin: 20px auto;
-            padding: 24px;
+            margin: 0;
+            padding: 16px;
             background-color: #f5f5f5;
         }
         .container {
             background: white;
-            padding: 24px;
+            padding: 16px;
+            max-width: 100%;
+            box-sizing: border-box;
         }
         .title {
-            font-size: 24px;
+            font-size: 20px;
             font-weight: bold;
-            margin-bottom: 32px;
+            margin-bottom: 24px;
         }
         .grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 32px;
-            margin-bottom: 32px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            margin-bottom: 24px;
         }
         select {
             width: 100%;
             padding: 8px;
             border-radius: 4px;
             border: 1px solid #e5e5e5;
+            font-size: 16px; /* 모바일에서 더 읽기 쉽게 */
         }
         label {
             display: block;
             margin-bottom: 8px;
         }
         .section-title {
-            font-size: 20px;
+            font-size: 18px;
             font-weight: bold;
             margin-bottom: 16px;
         }
         .stat-input {
             display: flex;
+            flex-wrap: wrap;
             align-items: center;
-            margin-bottom: 16px;
+            margin-bottom: 12px;
+            gap: 8px;
         }
         .stat-label {
-            width: 96px;
+            width: 80px;
+            font-size: 14px;
         }
         .progress-container {
             flex: 1;
-            margin: 0 16px;
+            min-width: 120px;
         }
         .progress-bar {
             position: relative;
-            width: 332px;
             height: 4px;
             background-color: #f3f4f6;
             border-radius: 2px;
@@ -74,32 +78,36 @@
             background-color: #f97316;
         }
         .stat-select {
-            width: 96px;
+            width: 70px;
+            font-size: 14px;
         }
         .info-box {
             background-color: #f9fafb;
-            padding: 16px;
+            padding: 12px;
             border-radius: 4px;
-            margin-bottom: 24px;
+            margin-bottom: 16px;
         }
         .info-title {
             font-weight: bold;
             margin-bottom: 8px;
+            font-size: 14px;
         }
         .info-content {
-            font-size: 14px;
-            line-height: 1.5;
+            font-size: 13px;
+            line-height: 1.4;
         }
         .button-group {
             display: flex;
-            gap: 16px;
+            flex-direction: column;
+            gap: 8px;
         }
         button {
-            flex: 1;
+            width: 100%;
             padding: 12px;
             border-radius: 4px;
             border: none;
             cursor: pointer;
+            font-size: 14px;
         }
         .primary {
             background-color: #3b82f6;
@@ -108,6 +116,28 @@
         .secondary {
             background-color: white;
             border: 1px solid #e5e5e5;
+        }
+        
+        @media (min-width: 640px) {
+            body {
+                padding: 24px;
+            }
+            .container {
+                padding: 24px;
+                max-width: 672px;
+                margin: 0 auto;
+            }
+            .grid {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 24px;
+            }
+            .button-group {
+                flex-direction: row;
+            }
+            .title {
+                font-size: 24px;
+            }
         }
     </style>
 </head>
@@ -202,15 +232,13 @@
         };
 
         function createProgressBar(currentValue) {
-            const totalWidth = 300;
-            const baseBarWidth = totalWidth / 3;
-            const baseWidth = (baseBarWidth / totalWidth) * 100;
-            const additionalWidth = currentValue === 0 
-                ? 0 
-                : (baseBarWidth * (currentValue / 100)) / totalWidth * 100;
-
             const div = document.createElement('div');
             div.className = 'progress-bar';
+            const baseWidth = 33.33;
+            const additionalWidth = currentValue === 0 
+                ? 0 
+                : (baseWidth * (currentValue / 100));
+
             div.innerHTML = `
                 <div class="progress-base" style="width: ${baseWidth}%"></div>
                 ${currentValue > 0 ? `
@@ -285,7 +313,6 @@
         }
 
         function updateDisplay() {
-            // Update stat inputs
             const container = document.getElementById('statInputs');
             container.innerHTML = '';
             STATS.forEach(stat => {
@@ -294,7 +321,6 @@
                 }
             });
 
-            // Calculate scores
             const currentScore = calculateDamage(state.stats);
             const maxScore = calculateDamage({
                 attackBonus: 200,
@@ -304,7 +330,6 @@
             });
             const percentile = calculatePercentile(currentScore);
 
-            // Update stats display
             document.getElementById('damageStats').innerHTML = `
                 <div>현재 점수: ${currentScore.toFixed(4)}</div>
                 <div>최대 점수: ${maxScore.toFixed(4)}</div>
