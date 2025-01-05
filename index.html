@@ -3,38 +3,116 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>파츠 보정 시뮬레이터</title>
+    <title>소전2 파츠 보정 시뮬레이터</title>
     <style>
         body {
             font-family: system-ui, -apple-system, sans-serif;
-            max-width: 600px;
+            max-width: 672px;
             margin: 20px auto;
-            padding: 20px;
+            padding: 24px;
             background-color: #f5f5f5;
         }
-        .card {
+        .container {
             background: white;
-            border-radius: 8px;
-            padding: 20px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            padding: 24px;
         }
-        .title { font-size: 1.5rem; font-weight: bold; margin-bottom: 20px; }
-        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px; }
-        select { width: 100%; padding: 8px; border-radius: 4px; border: 1px solid #ddd; margin-top: 4px; }
-        .section { margin-bottom: 20px; }
-        .section h3 { font-size: 1.2rem; margin-bottom: 10px; }
-        .stat-input { display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: center; margin-bottom: 10px; }
-        .button-group { display: flex; gap: 10px; }
-        button { flex: 1; padding: 10px; border-radius: 4px; border: none; cursor: pointer; }
-        .primary { background: #2563eb; color: white; }
-        .secondary { background: white; border: 1px solid #ddd; }
-        label { display: block; }
-        .info-box { background: #f8f9fa; padding: 12px; border-radius: 4px; margin-top: 8px; }
-        .stat-value { width: 120px !important; }
+        .title {
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 32px;
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 32px;
+            margin-bottom: 32px;
+        }
+        select {
+            width: 100%;
+            padding: 8px;
+            border-radius: 4px;
+            border: 1px solid #e5e5e5;
+        }
+        label {
+            display: block;
+            margin-bottom: 8px;
+        }
+        .section-title {
+            font-size: 20px;
+            font-weight: bold;
+            margin-bottom: 16px;
+        }
+        .stat-input {
+            display: flex;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+        .stat-label {
+            width: 96px;
+        }
+        .progress-container {
+            flex: 1;
+            margin: 0 16px;
+        }
+        .progress-bar {
+            position: relative;
+            width: 332px;
+            height: 4px;
+            background-color: #f3f4f6;
+            border-radius: 2px;
+            overflow: hidden;
+        }
+        .progress-base {
+            position: absolute;
+            left: 0;
+            height: 100%;
+            background-color: #3b82f6;
+        }
+        .progress-bonus {
+            position: absolute;
+            height: 100%;
+            background-color: #f97316;
+        }
+        .stat-select {
+            width: 96px;
+        }
+        .info-box {
+            background-color: #f9fafb;
+            padding: 16px;
+            border-radius: 4px;
+            margin-bottom: 24px;
+        }
+        .info-title {
+            font-weight: bold;
+            margin-bottom: 8px;
+        }
+        .info-content {
+            font-size: 14px;
+            line-height: 1.5;
+        }
+        .button-group {
+            display: flex;
+            gap: 16px;
+        }
+        button {
+            flex: 1;
+            padding: 12px;
+            border-radius: 4px;
+            border: none;
+            cursor: pointer;
+        }
+        .primary {
+            background-color: #3b82f6;
+            color: white;
+        }
+        .secondary {
+            background-color: white;
+            border: 1px solid #e5e5e5;
+        }
     </style>
 </head>
 <body>
-    <div class="card">
+    <div class="container">
         <div class="title">파츠 보정 시뮬레이터</div>
         
         <div class="grid">
@@ -54,19 +132,17 @@
             </div>
         </div>
 
-        <div class="section">
-            <h3>보정 수치 입력</h3>
-            <div id="statInputs"></div>
+        <div class="section-title">보정 수치 입력</div>
+        <div id="statInputs"></div>
+
+        <div class="info-box">
+            <div class="info-title">데미지 점수</div>
+            <div id="damageStats" class="info-content"></div>
         </div>
 
-        <div class="section">
-            <h3>데미지 점수</h3>
-            <div id="damageStats" class="info-box"></div>
-        </div>
-
-        <div class="section">
-            <h3>골드 소모</h3>
-            <div id="goldStats" class="info-box"></div>
+        <div class="info-box">
+            <div class="info-title">골드 소모</div>
+            <div id="goldStats" class="info-content"></div>
         </div>
 
         <div class="button-group">
@@ -115,51 +191,78 @@
         let state = {
             weaponType: 'attack',
             partType: 'barrel',
+            stats: {
+                attackBonus: 100,
+                critDamage: 100,
+                basicAttack: 100,
+                critRate: 100
+            },
             goldSpent: 0,
-            attempts: 0,
-            reinforcements: Object.fromEntries(STATS.map(stat => [stat, 100]))
+            attempts: 0
         };
 
-        function getStatValue(stat) {
-            return document.getElementById(stat)?.value || state.reinforcements[stat];
+        function createProgressBar(currentValue) {
+            const totalWidth = 300;
+            const baseBarWidth = totalWidth / 3;
+            const baseWidth = (baseBarWidth / totalWidth) * 100;
+            const additionalWidth = currentValue === 0 
+                ? 0 
+                : (baseBarWidth * (currentValue / 100)) / totalWidth * 100;
+
+            const div = document.createElement('div');
+            div.className = 'progress-bar';
+            div.innerHTML = `
+                <div class="progress-base" style="width: ${baseWidth}%"></div>
+                ${currentValue > 0 ? `
+                    <div class="progress-bonus" style="width: ${additionalWidth}%; left: ${baseWidth}%"></div>
+                ` : ''}
+            `;
+            return div;
         }
 
         function createStatInput(stat) {
             const div = document.createElement('div');
             div.className = 'stat-input';
-            div.innerHTML = `
-                <label>${STAT_LABELS[stat]}</label>
-                <select id="${stat}" class="stat-value" onchange="updateStats()">
-                    <option value="0">0</option>
-                    ${Array.from({length: 20}, (_, i) => `
-                        <option value="${(i + 1) * 10}">${(i + 1) * 10}%</option>
-                    `).join('')}
-                </select>
+            
+            const label = document.createElement('span');
+            label.className = 'stat-label';
+            label.textContent = STAT_LABELS[stat];
+            
+            const progressContainer = document.createElement('div');
+            progressContainer.className = 'progress-container';
+            progressContainer.appendChild(createProgressBar(state.stats[stat]));
+            
+            const select = document.createElement('select');
+            select.className = 'stat-select';
+            select.innerHTML = `
+                <option value="0">0</option>
+                ${Array.from({length: 20}, (_, i) => `
+                    <option value="${(i + 1) * 10}">${(i + 1) * 10}%</option>
+                `).join('')}
             `;
+            select.value = state.stats[stat];
+            select.onchange = (e) => {
+                state.stats[stat] = parseInt(e.target.value);
+                updateDisplay();
+            };
+            
+            div.appendChild(label);
+            div.appendChild(progressContainer);
+            div.appendChild(select);
+            
             return div;
         }
 
-        function calculateDamage(values, type, part) {
-            const coef = COEFFICIENTS[type][part];
+        function calculateDamage(values) {
+            const coef = COEFFICIENTS[state.weaponType][state.partType];
             let score = 0;
             
-            score += coef.attackBonus.base + coef.attackBonus.weight * values.attackBonus;
-            if (part === 'barrel') {
-                score += coef.critDamage.base + coef.critDamage.weight * values.critDamage;
-            }
-            score += coef.basicAttack.base + coef.basicAttack.weight * values.basicAttack;
-            score += coef.critRate.base + coef.critRate.weight * values.critRate;
+            Object.entries(coef).forEach(([stat, { base, weight }]) => {
+                if (stat === 'critDamage' && state.partType === 'part') return;
+                score += base + (weight * (values[stat] / 10));
+            });
             
             return score;
-        }
-
-        function calculateMaxDamage() {
-            return calculateDamage({
-                attackBonus: 20,
-                critDamage: 20,
-                basicAttack: 20,
-                critRate: 20
-            }, state.weaponType, state.partType);
         }
 
         function calculatePercentile(score) {
@@ -168,12 +271,12 @@
             
             for(let i = 0; i < iterations; i++) {
                 const simValues = {
-                    attackBonus: Math.floor(Math.random() * 20) + 1,
-                    critDamage: state.partType === 'barrel' ? Math.floor(Math.random() * 20) + 1 : 1,
-                    basicAttack: Math.floor(Math.random() * 20) + 1,
-                    critRate: Math.floor(Math.random() * 20) + 1
+                    attackBonus: Math.floor(Math.random() * 20) * 10 + 10,
+                    critDamage: state.partType === 'barrel' ? Math.floor(Math.random() * 20) * 10 + 10 : 0,
+                    basicAttack: Math.floor(Math.random() * 20) * 10 + 10,
+                    critRate: Math.floor(Math.random() * 20) * 10 + 10
                 };
-                if(calculateDamage(simValues, state.weaponType, state.partType) > score) {
+                if(calculateDamage(simValues) > score) {
                     betterOutcomes++;
                 }
             }
@@ -181,26 +284,27 @@
             return (betterOutcomes / iterations * 100).toFixed(3);
         }
 
-        function updateStats() {
+        function updateDisplay() {
+            // Update stat inputs
+            const container = document.getElementById('statInputs');
+            container.innerHTML = '';
             STATS.forEach(stat => {
-                const value = getStatValue(stat);
-                if (value !== undefined) {
-                    state.reinforcements[stat] = parseInt(value);
+                if (stat !== 'critDamage' || state.partType === 'barrel') {
+                    container.appendChild(createStatInput(stat));
                 }
             });
-            updateDisplay();
-        }
 
-        function updateDisplay() {
-            const normalized = Object.fromEntries(
-                Object.entries(state.reinforcements)
-                .map(([key, value]) => [key, value / 10])
-            );
-
-            const currentScore = calculateDamage(normalized, state.weaponType, state.partType);
-            const maxScore = calculateMaxDamage();
+            // Calculate scores
+            const currentScore = calculateDamage(state.stats);
+            const maxScore = calculateDamage({
+                attackBonus: 200,
+                critDamage: state.partType === 'barrel' ? 200 : 0,
+                basicAttack: 200,
+                critRate: 200
+            });
             const percentile = calculatePercentile(currentScore);
 
+            // Update stats display
             document.getElementById('damageStats').innerHTML = `
                 <div>현재 점수: ${currentScore.toFixed(4)}</div>
                 <div>최대 점수: ${maxScore.toFixed(4)}</div>
@@ -215,34 +319,20 @@
         }
 
         function simulate() {
-            const currentValues = Object.fromEntries(
-                STATS.map(stat => [stat, parseInt(getStatValue(stat))])
-            );
-
-            const newReinforcements = {};
+            const newStats = {};
             STATS.forEach(stat => {
-                if (currentValues[stat] === 0) {
-                    newReinforcements[stat] = 0;
+                if (state.stats[stat] === 0) {
+                    newStats[stat] = 0;
+                } else if (stat !== 'critDamage' || state.partType === 'barrel') {
+                    newStats[stat] = Math.floor(Math.random() * 20) * 10 + 10;
                 } else {
-                    newReinforcements[stat] = Math.floor(Math.random() * 20) * 10 + 10;
-                }
-                if (stat === 'critDamage' && state.partType === 'part') {
-                    newReinforcements[stat] = 0;
+                    newStats[stat] = 0;
                 }
             });
 
-            state.reinforcements = newReinforcements;
+            state.stats = newStats;
             state.goldSpent += 20000;
             state.attempts += 1;
-
-            // UI 업데이트
-            STATS.forEach(stat => {
-                const select = document.getElementById(stat);
-                if (select) {
-                    select.value = newReinforcements[stat];
-                }
-            });
-
             updateDisplay();
         }
 
@@ -261,32 +351,12 @@
             document.getElementById('partType').onchange = e => {
                 state.partType = e.target.value;
                 if (e.target.value === 'part') {
-                    state.reinforcements.critDamage = 0;
+                    state.stats.critDamage = 0;
                 }
-                initStatInputs();
                 updateDisplay();
             };
 
-            initStatInputs();
             updateDisplay();
-        }
-
-        function initStatInputs() {
-            const container = document.getElementById('statInputs');
-            container.innerHTML = '';
-            STATS.forEach(stat => {
-                if (stat !== 'critDamage' || state.partType === 'barrel') {
-                    container.appendChild(createStatInput(stat));
-                }
-            });
-
-            // 이전 값 복원
-            STATS.forEach(stat => {
-                const select = document.getElementById(stat);
-                if (select) {
-                    select.value = state.reinforcements[stat];
-                }
-            });
         }
 
         init();
