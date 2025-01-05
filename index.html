@@ -235,9 +235,10 @@
             const div = document.createElement('div');
             div.className = 'progress-bar';
             const baseWidth = 30;
+            // 200%일 때 70%가 되도록 비율 조정
             const additionalWidth = currentValue === 0 
                 ? 0 
-                : (baseWidth * (currentValue / 100));
+                : Math.min(70, (70 * currentValue) / 200);
 
             div.innerHTML = `
                 <div class="progress-base" style="width: ${baseWidth}%"></div>
