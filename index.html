@@ -33,7 +33,7 @@
             padding: 8px;
             border-radius: 4px;
             border: 1px solid #e5e5e5;
-            font-size: 16px; /* 모바일에서 더 읽기 쉽게 */
+            font-size: 16px;
         }
         label {
             display: block;
@@ -78,7 +78,7 @@
             background-color: #f97316;
         }
         .stat-select {
-            width: 70px;
+            width: 80px;
             font-size: 14px;
         }
         .info-box {
@@ -234,7 +234,7 @@
         function createProgressBar(currentValue) {
             const div = document.createElement('div');
             div.className = 'progress-bar';
-            const baseWidth = 33.33;
+            const baseWidth = 30;
             const additionalWidth = currentValue === 0 
                 ? 0 
                 : (baseWidth * (currentValue / 100));
