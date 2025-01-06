@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>소전2 파츠 보정 시뮬레이터</title>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            margin: 0;
+            padding: 16px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 16px;
+            max-width: 100%;
+            box-sizing: border-box;
+        }
+        .title {
+            font-size: 20px;
+            font-weight: bold;
+            margin-bottom: 24px;
+        }
+        .grid {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+        select {
+            width: 100%;
+            padding: 8px;
+            border-radius: 4px;
+            border: 1px solid #e5e5e5;
+            font-size: 16px;
+        }
+        label {
+            display: block;
+            margin-bottom: 8px;
+        }
+        .section-title {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 16px;
+        }
+        .stat-input {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            margin-bottom: 12px;
+            gap: 8px;
+        }
+        .stat-label {
+            width: 80px;
+            font-size: 14px;
+        }
+        .progress-container {
+            flex: 1;
+            min-width: 120px;
+        }
+        .progress-bar {
+            position: relative;
+            height: 4px;
+            background-color: #f3f4f6;
+            border-radius: 2px;
+            overflow: hidden;
+        }
+        .progress-base {
+            position: absolute;
+            left: 0;
+            height: 100%;
+            background-color: #3b82f6;
+        }
+        .progress-bonus {
+            position: absolute;
+            height: 100%;
+            background-color: #f97316;
+        }
+        .stat-select {
+            width: 80px;
+            font-size: 14px;
+        }
+        .info-box {
+            background-color: #f9fafb;
+            padding: 12px;
+            border-radius: 4px;
+            margin-bottom: 16px;
+        }
+        .info-title {
+            font-weight: bold;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+        .info-content {
+            font-size: 13px;
+            line-height: 1.4;
+        }
+        .button-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        button {
+            width: 100%;
+            padding: 12px;
+            border-radius: 4px;
+            border: none;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        .primary {
+            background-color: #3b82f6;
+            color: white;
+        }
+        .secondary {
+            background-color: white;
+            border: 1px solid #e5e5e5;
+        }
+        
+        @media (min-width: 640px) {
+            body {
+                padding: 24px;
+            }
+            .container {
+                padding: 24px;
+                max-width: 672px;
+                margin: 0 auto;
+            }
+            .grid {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 24px;
+            }
+            .button-group {
+                flex-direction: row;
+            }
+            .title {
+                font-size: 24px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="title">파츠 보정 시뮬레이터</div>
+        
+        <div class="grid">
+            <div>
+                <label>무기 종류</label>
+                <select id="weaponType">
+                    <option value="attack">공격보너스 무기</option>
+                    <option value="crit">치명피해 무기</option>
+                </select>
+            </div>
+            <div>
+                <label>부품 종류</label>
+                <select id="partType">
+                    <option value="barrel">총구</option>
+                    <option value="part">파츠</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="section-title">보정 수치 입력</div>
+        <div id="statInputs"></div>
+
+        <div class="info-box">
+            <div class="info-title">데미지 점수</div>
+            <div id="damageStats" class="info-content"></div>
+        </div>
+
+        <div class="info-box">
+            <div class="info-title">골드 소모</div>
+            <div id="goldStats" class="info-content"></div>
+        </div>
+
+        <div class="button-group">
+            <button class="primary" onclick="simulate()">보정 시도 (20,000 골드)</button>
+            <button class="secondary" onclick="resetStats()">골드 소모량 초기화</button>
+        </div>
+    </div>
+
+    <script>
+        const STATS = ['attackBonus', 'critDamage', 'basicAttack', 'critRate'];
+        const STAT_LABELS = {
+            attackBonus: '공격 보너스',
+            critDamage: '치명타 피해',
+            basicAttack: '공격력',
+            critRate: '치명타'
+        };
+        const COEFFICIENTS = {
+            attack: {
+                barrel: {
+                    attackBonus: { base: 0.26, weight: 0.026 },
+                    critDamage: { base: 0.18, weight: 0.018 },
+                    basicAttack: { base: 0.16, weight: 0.016 },
+                    critRate: { base: 0.10, weight: 0.010 }
+                },
+                part: {
+                    attackBonus: { base: 0.26, weight: 0.026 },
+                    basicAttack: { base: 0.16, weight: 0.016 },
+                    critRate: { base: 0.10, weight: 0.010 }
+                }
+            },
+            crit: {
+                barrel: {
+                    attackBonus: { base: 0.29, weight: 0.029 },
+                    critDamage: { base: 0.16, weight: 0.016 },
+                    basicAttack: { base: 0.16, weight: 0.016 },
+                    critRate: { base: 0.16, weight: 0.016 }
+                },
+                part: {
+                    attackBonus: { base: 0.29, weight: 0.029 },
+                    basicAttack: { base: 0.16, weight: 0.016 },
+                    critRate: { base: 0.16, weight: 0.016 }
+                }
+            }
+        };
+
+        let state = {
+            weaponType: 'attack',
+            partType: 'barrel',
+            stats: {
+                attackBonus: 100,
+                critDamage: 100,
+                basicAttack: 100,
+                critRate: 100
+            },
+            goldSpent: 0,
+            attempts: 0
+        };
+
+        function createProgressBar(currentValue) {
+            const div = document.createElement('div');
+            div.className = 'progress-bar';
+            const baseWidth = 33.333333;
+            // 100%일 때 33.333333%, 200%일 때 66.666667%가 되도록 비율 조정
+            const additionalWidth = currentValue === 0 
+                ? 0 
+                : Math.min(66.666667, (33.333333 * currentValue) / 100);
+
+            div.innerHTML = `
+                <div class="progress-base" style="width: ${baseWidth}%"></div>
+                ${currentValue > 0 ? `
+                    <div class="progress-bonus" style="width: ${additionalWidth}%; left: ${baseWidth}%"></div>
+                ` : ''}
+            `;
+            return div;
+        }
+
+        function createStatInput(stat) {
+            const div = document.createElement('div');
+            div.className = 'stat-input';
+            
+            const label = document.createElement('span');
+            label.className = 'stat-label';
+            label.textContent = STAT_LABELS[stat];
+            
+            const progressContainer = document.createElement('div');
+            progressContainer.className = 'progress-container';
+            progressContainer.appendChild(createProgressBar(state.stats[stat]));
+            
+            const select = document.createElement('select');
+            select.className = 'stat-select';
+            select.innerHTML = `
+                <option value="0">0</option>
+                ${Array.from({length: 20}, (_, i) => `
+                    <option value="${(i + 1) * 10}">${(i + 1) * 10}%</option>
+                `).join('')}
+            `;
+            select.value = state.stats[stat];
+            select.onchange = (e) => {
+                state.stats[stat] = parseInt(e.target.value);
+                updateDisplay();
+            };
+            
+            div.appendChild(label);
+            div.appendChild(progressContainer);
+            div.appendChild(select);
+            
+            return div;
+        }
+
+        function calculateDamage(values) {
+            const coef = COEFFICIENTS[state.weaponType][state.partType];
+            let score = 0;
+            
+            Object.entries(coef).forEach(([stat, { base, weight }]) => {
+                if (stat === 'critDamage' && state.partType === 'part') return;
+                score += base + (weight * (values[stat] / 10));
+            });
+            
+            return score;
+        }
+
+        function calculatePercentile(score) {
+            let betterOutcomes = 0;
+            const iterations = 100000;
+            
+            for(let i = 0; i < iterations; i++) {
+                const simValues = {
+                    attackBonus: Math.floor(Math.random() * 20) * 10 + 10,
+                    critDamage: state.partType === 'barrel' ? Math.floor(Math.random() * 20) * 10 + 10 : 0,
+                    basicAttack: Math.floor(Math.random() * 20) * 10 + 10,
+                    critRate: Math.floor(Math.random() * 20) * 10 + 10
+                };
+                if(calculateDamage(simValues) > score) {
+                    betterOutcomes++;
+                }
+            }
+            
+            return (betterOutcomes / iterations * 100).toFixed(3);
+        }
+
+        function updateDisplay() {
+            const container = document.getElementById('statInputs');
+            container.innerHTML = '';
+            STATS.forEach(stat => {
+                if (stat !== 'critDamage' || state.partType === 'barrel') {
+                    container.appendChild(createStatInput(stat));
+                }
+            });
+
+            const currentScore = calculateDamage(state.stats);
+            const maxScore = calculateDamage({
+                attackBonus: 200,
+                critDamage: state.partType === 'barrel' ? 200 : 0,
+                basicAttack: 200,
+                critRate: 200
+            });
+            const percentile = calculatePercentile(currentScore);
+
+            document.getElementById('damageStats').innerHTML = `
+                <div>현재 점수: ${currentScore.toFixed(4)}</div>
+                <div>최대 점수: ${maxScore.toFixed(4)}</div>
+                <div>최대 대비: ${((currentScore / maxScore) * 100).toFixed(2)}%</div>
+                <div>상위 ${percentile}% 수준의 옵션입니다</div>
+            `;
+
+            document.getElementById('goldStats').innerHTML = `
+                <div>시도 횟수: ${state.attempts}회</div>
+                <div>소모된 골드: ${state.goldSpent.toLocaleString()}골드</div>
+            `;
+        }
+
+        function simulate() {
+            const newStats = {};
+            STATS.forEach(stat => {
+                if (state.stats[stat] === 0) {
+                    newStats[stat] = 0;
+                } else if (stat !== 'critDamage' || state.partType === 'barrel') {
+                    newStats[stat] = Math.floor(Math.random() * 20) * 10 + 10;
+                } else {
+                    newStats[stat] = 0;
+                }
+            });
+
+            state.stats = newStats;
+            state.goldSpent += 20000;
+            state.attempts += 1;
+            updateDisplay();
+        }
+
+        function resetStats() {
+            state.goldSpent = 0;
+            state.attempts = 0;
+            updateDisplay();
+        }
+
+        function init() {
+            document.getElementById('weaponType').onchange = e => {
+                state.weaponType = e.target.value;
+                updateDisplay();
+            };
+
+            document.getElementById('partType').onchange = e => {
+                state.partType = e.target.value;
+                if (e.target.value === 'part') {
+                    state.stats.critDamage = 0;
+                }
+                updateDisplay();
+            };
+
+            updateDisplay();
+        }
+
+        init();
+    </script>
+</body>
+</html>
