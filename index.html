@@ -234,11 +234,11 @@
         function createProgressBar(currentValue) {
             const div = document.createElement('div');
             div.className = 'progress-bar';
-            const baseWidth = 30;
-            // 200%일 때 70%가 되도록 비율 조정
+            const baseWidth = 33.333333;
+            // 100%일 때 33.333333%, 200%일 때 66.666667%가 되도록 비율 조정
             const additionalWidth = currentValue === 0 
                 ? 0 
-                : Math.min(70, (70 * currentValue) / 200);
+                : Math.min(66.666667, (33.333333 * currentValue) / 100);
 
             div.innerHTML = `
                 <div class="progress-base" style="width: ${baseWidth}%"></div>
@@ -288,8 +288,6 @@
             
             Object.entries(coef).forEach(([stat, { base, weight }]) => {
                 if (stat === 'critDamage' && state.partType === 'part') return;
-                // 스탯이 0일 경우 해당 스탯의 기본 계수와 가중치를 모두 0으로 처리
-                if (values[stat] === 0) return;
                 score += base + (weight * (values[stat] / 10));
             });
             
