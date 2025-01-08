@@ -8,56 +8,61 @@
         body {
             font-family: system-ui, -apple-system, sans-serif;
             margin: 0;
-            padding: 16px;
+            padding: 8px;
             background-color: #f5f5f5;
+            font-size: 14px;
         }
         .container {
             background: white;
-            padding: 16px;
+            padding: 12px;
             max-width: 100%;
             box-sizing: border-box;
+            border-radius: 8px;
         }
         .title {
-            font-size: 20px;
+            font-size: 18px;
             font-weight: bold;
-            margin-bottom: 24px;
+            margin-bottom: 16px;
         }
         .grid {
             display: flex;
             flex-direction: column;
-            gap: 16px;
-            margin-bottom: 24px;
+            gap: 12px;
+            margin-bottom: 16px;
         }
         select {
             width: 100%;
             padding: 8px;
             border-radius: 4px;
             border: 1px solid #e5e5e5;
-            font-size: 16px;
+            font-size: 14px;
+            height: 36px;
         }
         label {
             display: block;
-            margin-bottom: 8px;
+            margin-bottom: 4px;
+            font-size: 13px;
         }
         .section-title {
-            font-size: 18px;
+            font-size: 16px;
             font-weight: bold;
-            margin-bottom: 16px;
+            margin-bottom: 12px;
         }
         .stat-input {
             display: flex;
             align-items: center;
-            margin-bottom: 12px;
-            gap: 16px;
+            margin-bottom: 8px;
+            gap: 8px;
+            flex-wrap: wrap;
         }
         .stat-label {
-            width: 80px;
-            font-size: 14px;
+            width: 70px;
+            font-size: 13px;
             flex-shrink: 0;
         }
         .progress-container {
             flex: 1;
-            min-width: 200px;
+            min-width: 120px;
         }
         .progress-bar {
             position: relative;
@@ -78,30 +83,32 @@
             background-color: #f97316;
         }
         .stat-select {
-            width: 80px;
-            font-size: 14px;
+            width: 70px;
+            font-size: 13px;
             flex-shrink: 0;
+            padding: 4px;
+            height: 32px;
         }
         .stat-final {
-            width: 90px;
-            font-size: 16px;
+            width: 60px;
+            font-size: 13px;
             font-weight: bold;
             text-align: right;
             flex-shrink: 0;
         }
         .info-box {
             background-color: #f9fafb;
-            padding: 12px;
+            padding: 10px;
             border-radius: 4px;
-            margin-bottom: 16px;
+            margin-bottom: 12px;
         }
         .info-title {
             font-weight: bold;
-            margin-bottom: 8px;
-            font-size: 14px;
+            margin-bottom: 6px;
+            font-size: 13px;
         }
         .info-content {
-            font-size: 13px;
+            font-size: 12px;
             line-height: 1.4;
         }
         .button-group {
@@ -111,11 +118,12 @@
         }
         button {
             width: 100%;
-            padding: 12px;
+            padding: 10px;
             border-radius: 4px;
             border: none;
             cursor: pointer;
             font-size: 14px;
+            height: 40px;
         }
         .primary {
             background-color: #3b82f6;
@@ -129,6 +137,7 @@
         @media (min-width: 640px) {
             body {
                 padding: 24px;
+                font-size: 16px;
             }
             .container {
                 padding: 24px;
@@ -139,12 +148,38 @@
                 display: grid;
                 grid-template-columns: 1fr 1fr;
                 gap: 24px;
+                margin-bottom: 24px;
             }
             .button-group {
                 flex-direction: row;
             }
             .title {
                 font-size: 24px;
+            }
+            .stat-label {
+                width: 80px;
+                font-size: 14px;
+            }
+            .stat-select {
+                width: 80px;
+                font-size: 14px;
+                height: 36px;
+            }
+            .stat-final {
+                width: 90px;
+                font-size: 16px;
+            }
+            .info-title {
+                font-size: 14px;
+            }
+            .info-content {
+                font-size: 13px;
+            }
+            button {
+                height: 44px;
+            }
+            label {
+                font-size: 14px;
             }
         }
     </style>
@@ -252,17 +287,17 @@
         };
 
         function calculateFinalStat(stat, percentage) {
-    const maxValue = MAX_STAT_VALUES[stat];
-    const minValue = maxValue / 3;  // 0% 일때의 값
-    const range = maxValue - minValue;  // 최대값-최소값
-    const value = minValue + (range * percentage / 200);
-    
-    // basicAttack은 반올림, 나머지는 소수점 첫째자리까지 표시
-    if (stat === 'basicAttack') {
-        return Math.round(value);
-    }
-    return value.toFixed(1);
-}
+            const maxValue = MAX_STAT_VALUES[stat];
+            const minValue = maxValue / 3;  // 0% 일때의 값
+            const range = maxValue - minValue;  // 최대값-최소값
+            const value = minValue + (range * percentage / 200);
+            
+            // basicAttack은 반올림, 나머지는 소수점 첫째자리까지 표시
+            if (stat === 'basicAttack') {
+                return Math.round(value);
+            }
+            return value.toFixed(1);
+        }
 
         function createProgressBar(currentValue) {
             const div = document.createElement('div');
