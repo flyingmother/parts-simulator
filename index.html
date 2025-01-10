@@ -31,12 +31,10 @@
             margin-bottom: 16px;
         }
         select {
-            width: 100%;
             padding: 8px;
             border-radius: 4px;
             border: 1px solid #e5e5e5;
             font-size: 14px;
-            height: 36px;
         }
         label {
             display: block;
@@ -59,6 +57,15 @@
             width: 70px;
             font-size: 13px;
             flex-shrink: 0;
+        }
+        .base-stat-select {
+            width: 70px;
+            font-size: 13px;
+            padding: 4px;
+            height: 32px;
+            border: 1px solid #e5e5e5;
+            border-radius: 4px;
+            background-color: #f9fafb;
         }
         .progress-container {
             flex: 1;
@@ -141,7 +148,7 @@
             }
             .container {
                 padding: 24px;
-                max-width: 672px;
+                max-width: 800px;
                 margin: 0 auto;
             }
             .grid {
@@ -159,6 +166,11 @@
             .stat-label {
                 width: 80px;
                 font-size: 14px;
+            }
+            .base-stat-select {
+                width: 80px;
+                font-size: 14px;
+                height: 36px;
             }
             .stat-select {
                 width: 80px;
@@ -232,17 +244,44 @@
             basicAttack: '공격력',
             critRate: '치명타'
         };
-        const MAX_STAT_VALUES = {
-            attackBonus: 11.4,
-            critDamage: 15,
-            basicAttack: 72,
-            critRate: 15
-        };
         const STAT_UNITS = {
             attackBonus: '%',
             critDamage: '%',
             basicAttack: '',
             critRate: '%'
+        };
+        const MAX_BASE_VALUES = {
+            attackBonus: 3.8,
+            critDamage: 5.0,
+            basicAttack: 24,
+            critRate: 5.0
+        };
+        const BASE_STAT_OPTIONS = {
+            attackBonus: [
+                {value: 3.8, label: '3.8%'},
+                {value: 3.4, label: '3.4%'},
+                {value: 3.0, label: '3.0%'},
+                {value: 2.6, label: '2.6%'}
+            ],
+            critDamage: [
+                {value: 5.0, label: '5.0%'},
+                {value: 4.5, label: '4.5%'},
+                {value: 4.0, label: '4.0%'},
+                {value: 3.5, label: '3.5%'}
+            ],
+            basicAttack: [
+                {value: 24, label: '24'},
+                {value: 23, label: '23'},
+                {value: 21, label: '21'},
+                {value: 19, label: '19'},
+                {value: 17, label: '17'}
+            ],
+            critRate: [
+                {value: 5.0, label: '5.0%'},
+                {value: 4.5, label: '4.5%'},
+                {value: 4.0, label: '4.0%'},
+                {value: 3.5, label: '3.5%'}
+            ]
         };
         const COEFFICIENTS = {
             attack: {
@@ -282,15 +321,20 @@
                 basicAttack: 100,
                 critRate: 100
             },
+            baseStats: {
+                attackBonus: 3.8,
+                critDamage: 5.0,
+                basicAttack: 24,
+                critRate: 5.0
+            },
             goldSpent: 0,
             attempts: 0
         };
 
-        function calculateFinalStat(stat, percentage) {
-            const maxValue = MAX_STAT_VALUES[stat];
-            const minValue = maxValue / 3;  // 0% 일때의 값
-            const range = maxValue - minValue;  // 최대값-최소값
-            const value = minValue + (range * percentage / 200);
+        function calculateFinalStat(stat, percentage, baseStat) {
+            // 초기치에 보정치 비율만큼을 더함
+            const bonusValue = baseStat * (percentage / 100); // 보정치에 의한 추가값
+            const value = baseStat + bonusValue;  // 초기치 + 추가값
             
             // basicAttack은 반올림, 나머지는 소수점 첫째자리까지 표시
             if (stat === 'basicAttack') {
@@ -299,14 +343,22 @@
             return value.toFixed(1);
         }
 
-        function createProgressBar(currentValue) {
+        function createProgressBar(stat, currentValue) {
             const div = document.createElement('div');
             div.className = 'progress-bar';
-            const baseWidth = 33.33; // 전체의 1/3
-            const maxBonusWidth = 66.67; // 전체의 2/3
-            const bonusWidth = currentValue === 0 
-                ? 0 
-                : (maxBonusWidth * currentValue) / 200;
+            
+            // 초기치의 최대 대비 비율 계산
+            const baseRatio = state.baseStats[stat] / MAX_BASE_VALUES[stat];
+            const baseWidth = 33.33 * baseRatio; // 파란색 바 길이
+            
+            // 보정치에 의한 추가 길이 계산
+            // 최대 가능 값 (최대 초기치 * 3) 대비 현재 최종값의 비율로 계산
+            const maxPossibleValue = MAX_BASE_VALUES[stat] * 3; // 최대 초기치의 300%
+            const currentFinalValue = state.baseStats[stat] * (1 + currentValue / 100); // 현재 최종값
+            const totalRatio = currentFinalValue / maxPossibleValue; // 전체 비율
+            
+            // 보정에 의한 추가 길이는 전체 비율에서 초기치 비율을 뺀 값
+            const bonusWidth = Math.max(0, (totalRatio * 100) - baseWidth);
 
             div.innerHTML = `
                 <div class="progress-base" style="width: ${baseWidth}%"></div>
@@ -317,6 +369,12 @@
             return div;
         }
 
+        function getBaseStatOptions(stat) {
+            return BASE_STAT_OPTIONS[stat].map(opt => 
+                `<option value="${opt.value}">${opt.label}</option>`
+            ).join('');
+        }
+
         function createStatInput(stat) {
             const div = document.createElement('div');
             div.className = 'stat-input';
@@ -325,9 +383,19 @@
             label.className = 'stat-label';
             label.textContent = STAT_LABELS[stat];
             
+            // 초기값 선택 추가
+            const baseSelect = document.createElement('select');
+            baseSelect.className = 'base-stat-select';
+            baseSelect.innerHTML = getBaseStatOptions(stat);
+            baseSelect.value = state.baseStats[stat];
+            baseSelect.onchange = (e) => {
+                state.baseStats[stat] = parseFloat(e.target.value);
+                updateDisplay();
+            };
+            
             const progressContainer = document.createElement('div');
             progressContainer.className = 'progress-container';
-            progressContainer.appendChild(createProgressBar(state.stats[stat]));
+            progressContainer.appendChild(createProgressBar(stat, state.stats[stat]));
             
             const select = document.createElement('select');
             select.className = 'stat-select';
@@ -345,9 +413,10 @@
 
             const finalStat = document.createElement('span');
             finalStat.className = 'stat-final';
-            finalStat.textContent = `${calculateFinalStat(stat, state.stats[stat])}${STAT_UNITS[stat]}`;
+            finalStat.textContent = `${calculateFinalStat(stat, state.stats[stat], state.baseStats[stat])}${STAT_UNITS[stat]}`;
             
             div.appendChild(label);
+            div.appendChild(baseSelect);
             div.appendChild(progressContainer);
             div.appendChild(select);
             div.appendChild(finalStat);
@@ -355,20 +424,27 @@
             return div;
         }
 
-        function calculateDamage(values) {
+        function calculateDamage(values, baseValues) {
             const coef = COEFFICIENTS[state.weaponType][state.partType];
             let score = 0;
             
             Object.entries(coef).forEach(([stat, { base, weight }]) => {
                 if (stat === 'critDamage' && state.partType === 'part') return;
                 if (values[stat] === 0) return;
-                score += base + (weight * (values[stat] / 10));
+                
+                // 초기치에 따른 상수 조정
+                const baseRatio = baseValues[stat] / MAX_BASE_VALUES[stat];
+                const adjustedBase = base * baseRatio;
+                const adjustedWeight = weight * baseRatio;
+                
+                // 증가율을 기준으로 점수 계산 (보정치 그대로 사용)
+                score += adjustedBase + (adjustedWeight * (values[stat] / 10));
             });
             
             return score;
         }
 
-        function calculatePercentile(score) {
+        function calculatePercentile(score, baseStats) {
             let betterOutcomes = 0;
             const iterations = 100000;
             
@@ -379,7 +455,8 @@
                     basicAttack: Math.floor(Math.random() * 20) * 10 + 10, 
                     critRate: Math.floor(Math.random() * 20) * 10 + 10
                 };
-                if(calculateDamage(simValues) > score) {
+                
+                if(calculateDamage(simValues, baseStats) > score) {
                     betterOutcomes++;
                 }
             }
@@ -396,20 +473,45 @@
                 }
             });
 
-            const currentScore = calculateDamage(state.stats);
-            const maxScore = calculateDamage({
+            // 현재 초기치 기준 점수 계산
+            // 현재 초기치와 현재 보정치로 계산한 현재 점수
+            const currentScore = calculateDamage(state.stats, state.baseStats);
+            
+            // 현재 초기치의 최대 보정치(200%) 점수
+            const currentMaxScore = calculateDamage({
                 attackBonus: 200,
                 critDamage: state.partType === 'barrel' ? 200 : 0,
                 basicAttack: 200,
                 critRate: 200
-            });
-            const percentile = calculatePercentile(currentScore);
+            }, state.baseStats);
+            
+            // 현재 초기치 환경에서의 percentile
+            const currentPercentile = calculatePercentile(currentScore, state.baseStats);
+
+            // 최대 초기치 환경
+            const maxBaseStats = {
+                attackBonus: MAX_BASE_VALUES.attackBonus,
+                critDamage: MAX_BASE_VALUES.critDamage,
+                basicAttack: MAX_BASE_VALUES.basicAttack,
+                critRate: MAX_BASE_VALUES.critRate
+            };
+            
+            // 최대 초기치에 최대 보정치(200%) 점수
+            const absoluteMaxScore = calculateDamage({
+                attackBonus: 200,
+                critDamage: state.partType === 'barrel' ? 200 : 0,
+                basicAttack: 200,
+                critRate: 200
+            }, maxBaseStats);
+
+            // 최대 초기치 환경에서의 percentile을 계산
+            const maxBasePercentile = calculatePercentile(currentScore, maxBaseStats);
 
             document.getElementById('damageStats').innerHTML = `
                 <div>현재 점수: ${currentScore.toFixed(4)}</div>
-                <div>최대 점수: ${maxScore.toFixed(4)}</div>
-                <div>최대 대비: ${((currentScore / maxScore) * 100).toFixed(2)}%</div>
-                <div>상위 ${percentile}% 수준의 옵션입니다</div>
+                <div>최대 점수: ${currentMaxScore.toFixed(4)}</div>
+                <div>최대 대비: ${((currentScore / currentMaxScore) * 100).toFixed(2)}% (최대 초기치 기준: ${((currentScore / absoluteMaxScore) * 100).toFixed(2)}%)</div>
+                <div>상위 ${currentPercentile}% 수준의 옵션입니다(최대 초기치 기준: ${maxBasePercentile}%) </div>
             `;
 
             document.getElementById('goldStats').innerHTML = `
