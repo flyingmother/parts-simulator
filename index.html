@@ -141,6 +141,8 @@
             border: 1px solid #e5e5e5;
         }
         
+
+        
         @media (min-width: 640px) {
             body {
                 padding: 24px;
@@ -216,6 +218,8 @@
                 </select>
             </div>
         </div>
+
+
 
         <div class="section-title">보정 수치 입력</div>
         <div id="statInputs"></div>
@@ -311,6 +315,28 @@
                 }
             }
         };
+
+        // 새로운 확률 테이블 (1~20 단계에 대한 확률 분포)
+        const PROBABILITY_TABLE = [
+            1, 2, 3, 4, 5, 6, 7, 8, 9, 9, 
+            8, 8, 6, 6, 5, 4, 3, 2, 2, 2
+        ];
+        
+        // 누적 확률 테이블 생성
+        const CUMULATIVE_PROBABILITY = [];
+        let cumulativeSum = 0;
+        for (let i = 0; i < PROBABILITY_TABLE.length; i++) {
+            cumulativeSum += PROBABILITY_TABLE[i];
+            CUMULATIVE_PROBABILITY.push(cumulativeSum);
+        }
+        
+        // 확률에 따른 상위 퍼센타일 계산을 위한 테이블
+        const PERCENTILE_TABLE = [];
+        let totalProbability = 100; // 총 확률은 100%
+        for (let i = 0; i < PROBABILITY_TABLE.length; i++) {
+            PERCENTILE_TABLE.push(totalProbability);
+            totalProbability -= PROBABILITY_TABLE[i];
+        }
 
         let state = {
             weaponType: 'attack',
@@ -444,16 +470,17 @@
             return score;
         }
 
+        // 새로운 확률 분포를 기반으로 한 퍼센타일 계산 함수
         function calculatePercentile(score, baseStats) {
+            let totalSimulations = 100000;
             let betterOutcomes = 0;
-            const iterations = 100000;
             
-            for(let i = 0; i < iterations; i++) {
+            for(let i = 0; i < totalSimulations; i++) {
                 const simValues = {
-                    attackBonus: Math.floor(Math.random() * 20) * 10 + 10,
-                    critDamage: state.partType === 'barrel' ? Math.floor(Math.random() * 20) * 10 + 10 : 0,
-                    basicAttack: Math.floor(Math.random() * 20) * 10 + 10, 
-                    critRate: Math.floor(Math.random() * 20) * 10 + 10
+                    attackBonus: randomValueWithProbability() * 10,
+                    critDamage: state.partType === 'barrel' ? randomValueWithProbability() * 10 : 0,
+                    basicAttack: randomValueWithProbability() * 10, 
+                    critRate: randomValueWithProbability() * 10
                 };
                 
                 if(calculateDamage(simValues, baseStats) > score) {
@@ -461,7 +488,27 @@
                 }
             }
             
-            return (betterOutcomes / iterations * 100).toFixed(3);
+            return (betterOutcomes / totalSimulations * 100).toFixed(3);
+        }
+
+        // 실제 확률에 기반한 랜덤 값 생성 함수
+        function randomValueWithProbability() {
+            const rand = Math.random() * 100;
+            for (let i = 0; i < CUMULATIVE_PROBABILITY.length; i++) {
+                if (rand < CUMULATIVE_PROBABILITY[i]) {
+                    return i + 1; // 1~20 값 반환
+                }
+            }
+            return 20; // 기본 최대값
+        }
+
+        // 주어진 보정값에 해당하는 상위 퍼센타일 계산 함수
+        function getPercentileForValue(value) {
+            const index = (value / 10) - 1; // 10% -> 0, 20% -> 1, ...
+            if (index < 0 || index >= PERCENTILE_TABLE.length) {
+                return 100; // 기본값
+            }
+            return PERCENTILE_TABLE[index];
         }
 
         function updateDisplay() {
@@ -474,7 +521,6 @@
             });
 
             // 현재 초기치 기준 점수 계산
-            // 현재 초기치와 현재 보정치로 계산한 현재 점수
             const currentScore = calculateDamage(state.stats, state.baseStats);
             
             // 현재 초기치의 최대 보정치(200%) 점수
@@ -517,7 +563,8 @@
             document.getElementById('goldStats').innerHTML = `
                 <div>시도 횟수: ${state.attempts}회</div>
                 <div>소모 골드: ${state.goldSpent.toLocaleString()}골드</div>
-                <div>※ 주의 : 인게임 보정 확률은 다를 수 있음</div>
+                <div>※ 주의 : 보정 확률은 하단 링크 참조 </div>
+                </div>https://gf2-bbs.exiliumgf.com/share?id=46322</div>   
             `;
         }
 
@@ -527,7 +574,7 @@
                 if (state.stats[stat] === 0) {
                     newStats[stat] = 0;
                 } else if (stat !== 'critDamage' || state.partType === 'barrel') {
-                    newStats[stat] = Math.floor(Math.random() * 20) * 10 + 10;
+                    newStats[stat] = randomValueWithProbability() * 10;
                 } else {
                     newStats[stat] = 0;
                 }
@@ -558,6 +605,8 @@
                 }
                 updateDisplay();
             };
+            
+
 
             updateDisplay();
         }
